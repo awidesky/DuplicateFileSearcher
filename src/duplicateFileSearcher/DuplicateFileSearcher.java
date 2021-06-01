@@ -3,6 +3,8 @@ package duplicateFileSearcher;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +23,7 @@ public class DuplicateFileSearcher {
 	private static final int DELETEOPTION_EARLIER = 1;
 	private static final int DELETEOPTION_VERVOSE = 2;
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 
 		if(args.length != 1 && args.length != 2) { //TODO : check if entered option correctly
 			System.out.println("DuplicateFileSearcher v1.0 usage : ");
@@ -42,7 +44,7 @@ public class DuplicateFileSearcher {
 			}
 		}).start();
 		
-		Arrays.stream(new File(args[0]).listFiles()).collect(Collectors.groupingBy(File::length)).entrySet().stream().parallel()
+		Files.list(Paths.get(args[0])).map(Path::toFile).collect(Collectors.groupingBy(File::length)).entrySet().stream().parallel()
 			.filter(e -> e.getValue(). size() > 1).map(Map.Entry<Long, List<File>>::getValue)
 			.forEach(DuplicateFileSearcher::checkData);
 		
