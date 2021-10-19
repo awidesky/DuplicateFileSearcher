@@ -32,7 +32,11 @@ public class DuplicateFileSearcher {
 			return;
 		}
 		
-		arg1 = args[1].split("=")[1];
+		if(args.length == 1) {
+			arg1 = "older";
+		} else {
+			arg1 = args[1].split("=")[1];
+		}
 		
 		new Thread(() -> {
 			while(isRunning) {
