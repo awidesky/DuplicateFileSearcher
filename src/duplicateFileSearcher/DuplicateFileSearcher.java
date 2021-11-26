@@ -1,11 +1,9 @@
 package duplicateFileSearcher;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -15,14 +13,12 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.Scanner;
 import java.util.stream.Collectors;
 
 
 public class DuplicateFileSearcher {
 
-	private static LinkedBlockingQueue<String> queue = new LinkedBlockingQueue<>();
-	private static boolean isRunning = true;
 	private static DeleteOption delOption;
 	private static ArrayList<FilePair> cacheList = new ArrayList<>();
 	
@@ -39,59 +35,50 @@ public class DuplicateFileSearcher {
 			if(delOption == null) printUsageAndKill();
 		}
 		
-		new Thread(() -> {
-			while(isRunning) {
-				 try {
-				 	 System.out.println(queue.take());
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-		}).start();
-		
-		if(args[0].endsWith("dfsCache.ser")) {
+		if(args[0].endsWith("DFSCache.txt")) {
 			readCached(args[0]);
 			deleteCached();
-			isRunning  = false;
 			return;
 		}
 		
+		System.out.println();
 		Files.list(Paths.get(args[0])).map(Path::toFile).collect(Collectors.groupingBy(File::length)).entrySet().stream().parallel() // convert to sets that each contains Files that have same length
 			.filter(e -> e.getValue(). size() > 1).map(Map.Entry<Long, List<File>>::getValue) // and pick those who have more than one value
 			.forEach(DuplicateFileSearcher::checkData);
 		
-		if(delOption == DeleteOption.CACHE_ONLY) {
+		if(delOption == DeleteOption.CACHE_ONLY && !cacheList.isEmpty()) {
 			writeCached();
 		}
 		
-		isRunning  = false;
 	}
 	
 	private static void writeCached() {
 		
 		try {
-			File path = new File(new SimpleDateFormat("yyyy-MM-dd-kk-mm-ss").format(new Date()) + File.separator + "dfsCache.ser");
+			File path = new File("." + File.separator + new SimpleDateFormat("MMddkkmm").format(new Date()) + "DFSCache.txt");
 			path.createNewFile();
-			ObjectOutputStream ois = new ObjectOutputStream(new FileOutputStream(path));
-			ois.writeObject(cacheList);
-			ois.close();
+			PrintWriter pw = new PrintWriter(path);
+			cacheList.stream().flatMap(FilePair::getAsStream).forEach(pw::println);
+			pw.flush();
+			pw.close();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		
 	}
 
-	@SuppressWarnings("unchecked")
 	private static void readCached(String path) {
 
 		try {
-			ObjectInputStream ois = new ObjectInputStream(new FileInputStream(new File(path)));
-			cacheList = (ArrayList<FilePair>) ois.readObject();
-			ois.close();
-		} catch (Exception e) {
+			Scanner sc = new Scanner(new File(path));
+			while(sc.hasNext()) {
+				cacheList.add(new FilePair(sc.nextLine(), sc.nextLine()));
+			}
+			sc.close();
+		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
-		
+
 	}
 
 	private static void deleteCached() {
@@ -127,13 +114,15 @@ public class DuplicateFileSearcher {
 				
 			}
 		}
-		queue.offer(sb.toString());
+		System.out.println(sb.toString());
 	}
 
 	private static void printUsageAndKill() {
 		System.out.println("DuplicateFileSearcher v1.0 usage : ");
 		System.out.println("java -jar DuplicateFileSearcher.jar <searchDirectory> [--delOpt=(" + DeleteOption.getCommandArgsList() + ")]");
-		System.out.println("default is deleting older");
+		System.out.println("Default is printing result and caching result");
+		System.out.println("If you use cacheNprintonly, this program prints results and save file info that is duplicate.");
+		System.out.println("If you want to delete files that was cached, write path of *DFSCache.txt file and deleteOption");
 		System.exit(1);;
 	}
 	
@@ -179,23 +168,24 @@ public class DuplicateFileSearcher {
 			}	
 		}
 		
-		queue.offer(sb.toString());
+		System.out.println(sb.toString());
 		
 	}
 
 	private static boolean isDuplicate(File file1, File file2, StringBuilder sb) {
 
         byte[] first, second;
+        int strlen = Math.max(file1.getName().length(), file2.getName().length());
         
-        sb.append("\nchecking :\n");
-        sb.append(file1.getName() + "\t" + new SimpleDateFormat("yyyy-MM-dd-kk-mm-ss").format(new Date(file1.lastModified())) + "\n");
-        sb.append(file2.getName() + "\t" + new SimpleDateFormat("yyyy-MM-dd-kk-mm-ss").format(new Date(file2.lastModified())) + "\n");
+        sb.append("checking :\n");
+        sb.append(String.format("%-" + strlen + "s", file1.getName()) + "\t" + new SimpleDateFormat("yyyy-MM-dd-kk-mm").format(new Date(file1.lastModified())) + "\t" + file1.length() + "byte\n");
+        sb.append(String.format("%-" + strlen + "s", file2.getName()) + "\t" + new SimpleDateFormat("yyyy-MM-dd-kk-mm").format(new Date(file2.lastModified())) + "\t" + file2.length() + "byte\n");
         
 		try {
 			first = Files.readAllBytes(file1.toPath());
 			second = Files.readAllBytes(file2.toPath());
 			boolean re = Arrays.equals(first, second);
-			sb.append("result : " + re);
+			sb.append("result : " + re + "\n");
 			return re;
 		} catch (IOException e) {
 			e.printStackTrace();

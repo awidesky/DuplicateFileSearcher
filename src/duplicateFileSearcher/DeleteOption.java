@@ -13,7 +13,7 @@ public enum DeleteOption {
 	}
 	
 	public static String getCommandArgsList() {
-		return "older" + "|" + "earlier" + "|" + "cacheNprintonly";
+		return DELETE_OLDER.getCommandArg() + "|" + DELETE_OLDER.getCommandArg() + "|" + CACHE_ONLY.getCommandArg();
 	}
 	
 	public static DeleteOption get(String s) {
@@ -26,7 +26,7 @@ public enum DeleteOption {
 			return DELETE_EARLIER;
 			
 		case "cacheNprintonly":
-			return DELETE_EARLIER;
+			return CACHE_ONLY;
 		
 		default:
 			return null;
