@@ -1,5 +1,8 @@
 package duplicateFileSearcher;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 public enum DeleteOption {
 
 	DELETE_OLDER("older"),
@@ -13,7 +16,7 @@ public enum DeleteOption {
 	}
 	
 	public static String getCommandArgsList() {
-		return DELETE_OLDER.getCommandArg() + "|" + DELETE_OLDER.getCommandArg() + "|" + CACHE_ONLY.getCommandArg();
+		return Arrays.stream(DeleteOption.values()).map(DeleteOption::getCommandArg).collect(Collectors.joining("|"));
 	}
 	
 	public static DeleteOption get(String s) {
